@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Account Registration</title>
+  <link href="../style/account_form.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+  <header class="header-box">
+    <div class="navbar">
+      <a href="/"><img src="../images/logo.jpg" class="logo"></a>
+      <ul>
+        <li><a href="#">About Us</a></li>
+        <li><a href="#">Contact</a></li>
+        <li><a href="quote-form.html">Fuel Quote</a></li>
+        <li><a href="quote-history.html">Fuel History</a></li>
+    </ul>
+    </div>
+</header>
+
+  <form id="registrationForm" action="/register" method="post">
+    <div class="headings">
+      <h3>Registration</h3>
+    </div>
+
+    <div class="container">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" placeholder="Create a username" required>
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" placeholder="Create a password" required>
+      
+      <label for="confirmPassword">Confirm Password</label>
+      <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required>
+
+          <br>
+
+          <button type="submit">Register now</button>
+
+
+        <p class="register">Have an account? <a href="login.html">Return to login page</a></p>
+    </div>
+  </form>
+
+  <script>
+    document.getElementById("registrationForm").addEventListener("submit", async function(event) {
+      // Prevent the form from performing its default action (e.g., form submission)
+      event.preventDefault(); 
+      
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const confirmPassword = document.getElementById("confirmPassword").value;
+  
+      console.log('Form submitted'); // Debugging statement
+  
+      // Check if passwords match
+      if (password !== confirmPassword) {
+        alert('Passwords do not match');
+        return;
+      }
+  
+      try {
+        const response = await fetch('/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username, password, confirmPassword })
+        });
+  
+        console.log('Response:', response); // Debugging statement
+  
+        if (response.ok) {
+          alert('Registration successful!');
+          console.log('Redirecting to login.html'); // Debugging statement
+          window.location.href = 'login.html';
+        } else {
+          const responseData = await response.json();
+          console.log('Response data:', responseData); // Debugging statement
+  
+          if (response.status === 400 && responseData.error === "Username already exists") {
+            alert('Username already exists. Please choose a different username.');
+          } else {
+            alert('Registration failed. Please try again.');
+          }
+        }
+      } catch (error) {
+        console.error('Error during registration:', error);
+        alert('Registration failed. Please try again later.');
+      }
+    });
+  </script>
+
+  
+</body>
+
+</html>
+

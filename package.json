@@ -1,0 +1,26 @@
+{
+  "name": "luminex-petro",
+  "version": "1.0.0",
+  "description": "In this assignment you will build the front end for the web application that you designed in assignment 1. \r Remember, we are only building front end in this assignment.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "devStart": "nodemon server.js",
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.2",
+    "express": "^4.19.2",
+    "mongodb": "^6.5.0",
+    "mongoose": "^8.3.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^9.2.0",
+    "supertest": "^6.3.4"
+  }
+}

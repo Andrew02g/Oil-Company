@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Fuel Quote History</title>
+    <link href="../style/fuel-history.css" rel="stylesheet">
+</head>
+<body>
+    <header class="header-box">
+        <div class="navbar">
+            <a href="/"><img src="../images/logo.jpg" class="logo" alt="Logo"></a>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="quote-form.html">Fuel Quote</a></li>
+                <li><a href="user-profile.html">Profile Home</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <h2><i>Fuel Quotes History</i></h2>
+
+    <!-- Table for displaying fuel quote history -->
+    <table class="box" id="quoteHistoryTable">
+        <thead>
+            <tr>
+                <th>Gallons</th>
+                <th>Delivery Address</th>
+                <th>Delivery Date</th>
+                <th>Price per Gallon</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <!-- This is the placeholder for the dynamic content -->
+        <tbody>
+            <!-- Populated by JavaScript with fetched data -->
+        </tbody>
+    </table>
+
+    <!-- Message to display if there's no history -->
+    <div id="noHistoryMessage" style="display: none; text-align: center; margin-top: 20px;">
+        No fuel quote history found.
+    </div>
+
+    <!-- Script to fetch and display data -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loggedInUser = localStorage.getItem('loggedInUser');
+
+            // Redirect to login if not logged in
+            if (!loggedInUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const fetchURL = `/quote-history`; // Backend endpoint
+            const headers = {
+                'Authorization': `Basic ${btoa(`${loggedInUser}:`)}`,
+                'Content-Type': 'application/json'
+            };
+
+            fetch(fetchURL, { headers })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch quote history');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const tableBody = document.getElementById('quoteHistoryTable').getElementsByTagName('tbody')[0];
+
+                    // Clear any existing rows
+                    tableBody.innerHTML = '';
+
+                    if (data.history.length === 0) {
+                        document.getElementById('noHistoryMessage').style.display = 'block'; // Display message if no history
+                        return;
+                    }
+
+                    // Iterate through the fetched data and create table rows
+                    data.history.forEach(item => {
+                        const row = document.createElement('tr');
+
+                        row.appendChild(createTableCell(item.gallonsRequest || "N/A")); // Check for undefined
+                        row.appendChild(createTableCell(formatAddress(item.deliveryAddress))); // This handles undefined addresses
+                        row.appendChild(createTableCell(formatDate(item.deliveryDate))); // Check if valid
+                        row.appendChild(createTableCell(item.suggestedPrice ? item.suggestedPrice : "N/A"));
+                        row.appendChild(createTableCell(item.amountDue ? item.amountDue.toFixed(2) : "N/A"));
+
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching quote history:', error);
+                });
+        });
+
+        // Helper functions for table cells, addresses, and dates
+        function createTableCell(content) {
+            const cell = document.createElement('td');
+            cell.textContent = content;
+            return cell;
+        }
+
+        function formatAddress(address) {
+            if (!address) {
+                return "Unknown Address"; // Return a default value if address is undefined
+            }
+
+            let addressString = "";
+
+            if (address.address1) {
+                addressString += address.address1; // Use address1 if it exists
+            } else {
+                addressString += "Address not specified"; // Fallback
+            }
+
+            if (address.address2) {
+                addressString += `, ${address.address2}`; // Add address2 if it exists
+            }
+
+            if (address.city) {
+                addressString += `, ${address.city}`; // Add city if it exists
+            }
+
+            if (address.state) {
+                addressString += `, ${address.state}`; // Add state if it exists
+            }
+
+            if (address.zipcode) {
+                addressString += `, ${address.zipcode}`; // Add zipcode if it exists
+            }
+
+            return addressString;
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString(undefined, { timeZone: 'UTC' }); // Adjust format if needed
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+const express = require('express');
+const app = express();
+const { ObjectId } = require('mongodb');
+
+app.set('view engine', 'ejs');
+
+const MongoClient = require('mongodb').MongoClient;
+
+const url = 'mongodb://localhost:27017'; // Update this URL with your MongoDB connection string
+const dbName = 'Oil_Company_Project'; // Update this with your database name
+
+MongoClient.connect(url, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+    if (err) return console.error(err);
+    console.log('Connected to MongoDB');
+
+    const db = client.db(dbName);
+
+    app.use(express.urlencoded({ extended: true })); // Middleware for parsing request body
+
+    // Define your routes that require database interaction here
+
+    app.post('/login', (req, res) => {
+        const { username, password } = req.body;
+    
+        // Check if the username and password match a record in the database
+        db.collection('users').findOne({ username, password }, (err, user) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).send('Internal Server Error');
+            }
+            if (user) {
+                res.redirect(`/profile/${user._id}`); // Redirect to user profile page
+            } else {
+                res.status(401).send('Invalid username or password'); // Send 401 Unauthorized status
+            }
+        });
+    });
+    
+    app.post('/register', (req, res) => {
+        const { username, password, confirmPassword } = req.body;
+    
+        // Check if the password and confirm password match
+        if (password !== confirmPassword) {
+            return res.send('Passwords do not match'); // Or render an error page
+        }
+    
+        // Insert the new user into the database
+        db.collection('users').insertOne({ username, password }, (err, result) => {
+            if (err) return console.error(err);
+            res.redirect('/login'); // Redirect to login page after registration
+        });
+    });
+    
+    app.post('/profile/:userId/setup', (req, res) => {
+        const userId = req.params.userId;
+        const { fullName, address, city, state, zipcode } = req.body;
+    
+        // Update the user profile in the database with the provided information
+        db.collection('users').updateOne(
+            { _id: ObjectId(userId) },
+            { $set: { fullName, address, city, state, zipcode } },
+            (err, result) => {
+                if (err) return console.error(err);
+                res.redirect(`/profile/${userId}`); // Redirect to user profile page
+            }
+        );
+    });
+    
+    app.post('/fuel-quote', (req, res) => {
+        const { gallonsRequired, deliveryAddress } = req.body;
+    
+        // Save the fuel quote request in the database or perform necessary actions
+        res.render('fuel-quote-confirmation', { gallonsRequired, deliveryAddress });
+    });
+
+    // Error handling middleware
+    app.use((err, req, res, next) => {
+        console.error(err.stack);
+        res.status(500).send('Something broke!');
+    });
+});
+
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});

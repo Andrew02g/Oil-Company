@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Fuel Quote Request Form</title>
+    <link rel="stylesheet" href="../style/fuel-quote.css">
+</head>
+
+<body>
+    <header class="header-box">
+        <div class="navbar">
+            <a href="/"><img src="../images/logo.jpg" class="logo"></a>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="user-profile.html">Profile Home</a></li>
+                <li><a href="quote-history.html">Fuel History</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <div class="form-container">
+        <div class="header">
+            <h1>Fuel Quote Request</h1>
+            <p>Please fill in the indicated fields</p>
+        </div>
+        <form id="quoteForm" action="/quote-form" method="post">
+            <input type="hidden" id="username" name="username">
+            <label for="gallonsRequest">Gallons Requested<span style="color: red;">*</span>: </label>
+            <input type="number" id="gallons" oninput="checkFields()" required><br>
+
+            <label for="deliveryAddress">Delivery Address: </label>
+            <input type="text" class="readonly-input" id="addressInput" readonly><br>
+
+            <label for="deliveryDate">Delivery Date: </label>
+            <input type="date" id="deliveryDate" oninput="checkFields()"><br>
+
+            <label for="suggestedPrice">Suggested Price per Gallon: </label>
+            <input type="text" class="readonly-input" id="price" value="$0.00" readonly><br>
+
+            <label for="amountDue">Total Amount Due: </label>
+            <input type="text" class="readonly-input" id="total" value="$0.00" readonly><br>
+
+            <!-- Hidden input fields for factors -->
+            <input type="hidden" id="locationFactor" value="0.02"> <!-- Default value for Texas -->
+            <input type="hidden" id="rateHistoryFactor" value="0.01"> <!-- Default value for having history -->
+            <input type="hidden" id="gallonsRequestedFactor" value="0.02"> <!-- Default value for more than 1000 gallons -->
+            
+            <div class="quoteButtons">
+                <button type="button" class="quotebutton" disabled onclick="calculateAndEnableSubmit()">Get Quote</button>
+                <button type="submit" class="submitbutton" disabled>Submit</button>
+            </div>
+
+        </form>
+        
+    </div>
+    
+</body>
+
+<script>
+    const loggedInUser = localStorage.getItem('loggedInUser');
+
+    if (!loggedInUser) {
+        window.location.href = 'login.html';
+    } else {
+        document.getElementById('username').value = loggedInUser;
+    }
+
+    async function fetchAddressData() { //GET ADDRESS
+        try {
+        const addressResponse = await fetch('/get-address', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username: loggedInUser })
+        });
+
+        if (!addressResponse.ok) {
+            throw new Error('Failed to fetch address');
+        }
+        const addressData = await addressResponse.json();
+        return addressData;
+    } catch (error) {
+            console.error('Error fetching address data:', error);
+            throw error; // Propagate the error
+        }
+    }
+
+    function checkFields() {
+        const gallonsInput = parseFloat(document.getElementById("gallons").value);
+        const deliveryDateInput = document.getElementById("deliveryDate").value;
+        const quoteButton = document.querySelector('.quotebutton');
+        const submitButton = document.querySelector('.submitbutton');
+
+        if (gallonsInput && deliveryDateInput) {
+            quoteButton.disabled = false;
+            submitButton.disabled = true;
+        } else {
+            quoteButton.disabled = true;
+            submitButton.disabled = true;
+        }
+    }
+
+    function calculateAndEnableSubmit() {
+        calculateFuelQuote(); // Calculate fuel quote
+        document.querySelector('.submitbutton').disabled = false; // Enable "Submit Form" button
+    }
+
+    function calculateFuelQuote() {
+        const gallons = parseFloat(document.getElementById("gallons").value);
+
+        const currentPrice = 1.50; // Current price per gallon
+    
+        // Determine the gallons requested factor based on the number of gallons
+        const gallonsRequestedFactor = gallons >= 1000 ? 0.02 : 0.03;
+    
+        // Update the hidden input field for gallons requested factor
+        document.getElementById("gallonsRequestedFactor").value = gallonsRequestedFactor;
+
+        const locationFactor = parseFloat(document.getElementById("locationFactor").value); // Location factor
+        const rateHistoryFactor = parseFloat(document.getElementById("rateHistoryFactor").value); // Rate history factor
+        const companyProfitFactor = 0.10; // Company profit factor
+
+        const margin = currentPrice * (locationFactor - rateHistoryFactor + gallonsRequestedFactor + companyProfitFactor);
+        const suggestedPrice = currentPrice + margin;
+
+        const totalAmountDue = gallons * suggestedPrice;
+        
+        // Format with dollar signs
+        const formattedSuggestedPrice = `$${suggestedPrice.toFixed(3)}`;
+        const formattedTotalAmountDue = `$${totalAmountDue.toFixed(2)}`;
+
+        // Set the form fields with the formatted values
+        document.getElementById("price").value = formattedSuggestedPrice; // Ensure dollar sign is set
+        document.getElementById("total").value = formattedTotalAmountDue; // Ensure dollar sign is set
+}
+
+        // document.querySelector('.quotebutton').addEventListener('click', function(event) {
+        // event.preventDefault(); // Prevent form submission
+        // calculateFuelQuote(); // Calculate and update the suggested price and total amount due
+// });
+
+    document.getElementById("quoteForm").addEventListener("submit", function(event) {
+        event.preventDefault(); // Prevent default form submission
+
+        submitForm();
+    });
+
+    async function formatAddressUpdateLocationFactor(addressData){
+        console.log("Address data:", addressData);
+        let formattedAddress = addressData.address.address1;
+        if (addressData.address.address2) {
+            formattedAddress += ", " + addressData.address.address2;
+        }
+        formattedAddress += ", " + addressData.address.city + ", " + addressData.address.state + ", " + addressData.address.zipcode;
+
+        // Set the value of the address field
+        document.getElementById("addressInput").value = formattedAddress;
+
+        const state = addressData.address.state.toUpperCase(); // Normalize state to uppercase
+        const locationFactor = (state === "TX") ? 0.02 : 0.04;
+        document.getElementById("locationFactor").value = locationFactor;
+    }
+
+        // Fetch address data and update the form fields on page load
+        document.addEventListener("DOMContentLoaded", async function() {
+        try {
+            const addressData = await fetchAddressData();
+            await formatAddressUpdateLocationFactor(addressData);
+            await getHistoryFactor();
+        } catch (error) {
+            console.error('Error on page load:', error);
+            // Handle error if needed
+        }
+    });
+
+    async function getHistoryFactor(){
+        try {
+            const historyResponse = await fetch('/get-rate-history-factor', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username: loggedInUser })
+            });
+            if (!historyResponse.ok) {
+                throw new Error('Failed to fetch rate history factor');
+            }
+            const historyData = await historyResponse.json();
+            document.getElementById("rateHistoryFactor").value = historyData.rateHistoryFactor;
+        } catch (error) {
+            console.error('Error fetching rate history factor:', error);
+            throw error;
+        }
+    }
+
+    async function submitForm(){
+        try{
+            const username = loggedInUser;
+            const addressData = await fetchAddressData();
+            gallonsRequest = parseFloat(document.getElementById('gallons').value);
+            deliveryDate = document.getElementById('deliveryDate').value;
+            suggestedPrice = parseFloat(document.getElementById('price').value.replace('$', ''));
+            amountDue = parseFloat(document.getElementById('total').value.replace('$', ''));
+
+            const response = await fetch("/quote-form", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    username,
+                    gallonsRequest,
+                    deliveryAddress: addressData.address, 
+                    deliveryDate,
+                    suggestedPrice,
+                    amountDue
+                })
+            })
+            if (!response.ok) {
+                throw new Error("Submission failed");
+            }
+            alert("Fuel quote submitted successfully!");
+        } catch (error) {
+            console.error("Error:", error.message);
+            alert("Failed to submit fuel quote. Please try again later.");
+        }
+    }
+</script>
+
+</html>
